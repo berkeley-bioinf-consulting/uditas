@@ -1,0 +1,38 @@
+# This file may be used to create an environment using:
+# $ conda env create -f uditas_env.yml
+name: uditas_env
+channels:
+- defaults
+- anaconda
+- conda-forge
+- bioconda
+dependencies:
+- bzip2
+- pip
+- libgcc
+- twobitreader
+- perl-threaded
+- openssl
+- libffi
+- libiconv
+- libpng
+- libxcb
+- ca-certificates
+- curl
+- freetype
+- glib
+- libtiff
+- libxml2
+- xlrd
+- bcftools
+- cutadapt
+- bedtools
+- htslib
+- samtools
+- bowtie2
+- python=3.9
+- msgpack-python
+- gst-plugins-base
+- gstreamer
+- mmtf-python
+- sqlite

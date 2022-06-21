@@ -6,14 +6,8 @@
 # imports here
 
 from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
 
-from builtins import zip
-from builtins import str
-from builtins import range
-from past.utils import old_div
-from ._version import __version__
+from _version import __version__
 
 import matplotlib
 
@@ -40,6 +34,8 @@ import operator
 import subprocess
 
 import twobitreader
+
+from Bio.Alphabet import IUPAC
 
 from Bio import SeqIO
 
@@ -91,13 +87,13 @@ class ReactionTypeError(Error):
 ################################################################################
 def open_fastq_or_gz(filename):
     if filename.endswith(".fastq") and os.access(filename, os.F_OK):
-        return open(filename, "r")
+        return open(filename, "rU")
     elif filename.endswith(".fastq.gz") and os.access(filename, os.F_OK):
-        return gzip.open(filename, "rt")
+        return gzip.open(filename, "rb")
     elif filename.endswith(".fastq") and os.access(filename + ".gz", os.F_OK):
-        return gzip.open(filename + ".gz", "rt")
+        return gzip.open(filename + ".gz", "rb")
     elif filename.endswith(".fastq.gz") and os.access(filename[:-3], os.F_OK):
-        return open(filename[:-3], "r")
+        return open(filename[:-3], "rU")
     raise IOError("Unknown file: " + filename)
 
 
@@ -108,7 +104,7 @@ def open_fastq_or_gz(filename):
 def hamm_dist(str1, str2):
     assert len(str1) == len(str2)
     ne = operator.ne
-    return sum(map(ne, str1, str2))
+    return sum(itertools.imap(ne, str1, str2))
 
 
 ################################################################################
@@ -134,7 +130,7 @@ def select_barcode(seq, barcode_list, n_max_mismatches=1):
 ################################################################################
 def mask(seq, qual, min_qual=12):
 
-    return "".join((b if (ord(q) - 33) >= min_qual else "N") for b, q in zip(seq, qual))
+    return "".join((b if (ord(q) - 33) >= min_qual else "N") for b, q in itertools.izip(seq, qual))
 
 
 ################################################################################
@@ -154,13 +150,13 @@ def create_umi_dict(filename):
 
     umi_dict = dict()
 
-    umi_reads = zip(umi_file)
+    umi_reads = itertools.izip(umi_file)
 
     for header_umi in umi_reads:
 
-        seq_umi = next(umi_reads)
-        next(umi_reads)
-        qual_umi = next(umi_reads)
+        seq_umi = umi_reads.next()
+        umi_reads.next()
+        qual_umi = umi_reads.next()
         umi_dict[header_umi[0].split()[0][1:]] = [seq_umi[0].rstrip(), qual_umi[0].rstrip()]
 
     return umi_dict
@@ -295,10 +291,10 @@ def demultiplex(dir_sample):
 
     index_i1_list = list(experiments['index_I1'])
     barcode_i1_list = list(experiments['barcode_I1'])
-    i1_dict = dict(list(zip(barcode_i1_list, index_i1_list)))
+    i1_dict = dict(zip(barcode_i1_list, index_i1_list))
     index_i2_list = list(experiments['index_I2'])
     barcode_i2_list = list(experiments['barcode_I2'])
-    i2_dict = dict(list(zip(barcode_i2_list, index_i2_list)))
+    i2_dict = dict(zip(barcode_i2_list, index_i2_list))
 
     index_i1_set = set(index_i1_list)
 
@@ -312,7 +308,7 @@ def demultiplex(dir_sample):
     files_out = list()
 
     # Create all directories if necessary
-    N7_N5 = zip(index_i1_list, index_i2_list)
+    N7_N5 = itertools.izip(index_i1_list, index_i2_list)
     for (N7, N5) in N7_N5:
         exp_dir = create_filename(dir_sample, N7, N5, 'mainfolder')
         if not os.path.exists(exp_dir):
@@ -377,15 +373,15 @@ def demultiplex(dir_sample):
         mismatch_dict_i1 = dict()
         mismatch_dict_i2 = dict()
 
-        r1_r2_i1_i2 = zip(r1_file, r2_file, i1_file, i2_file)
+        r1_r2_i1_i2 = itertools.izip(r1_file, r2_file, i1_file, i2_file)
 
         for header_r1, header_r2, header_i1, header_i2 in r1_r2_i1_i2:
-            
-            seq_r1, seq_r2, seq_i1, seq_i2_plus_umi = next(r1_r2_i1_i2)
+    
+            seq_r1, seq_r2, seq_i1, seq_i2_plus_umi = r1_r2_i1_i2.next()
 
-            next(r1_r2_i1_i2)
+            r1_r2_i1_i2.next()
 
-            qual_r1, qual_r2, qual_i1, qual_i2_plus_umi = next(r1_r2_i1_i2)
+            qual_r1, qual_r2, qual_i1, qual_i2_plus_umi = r1_r2_i1_i2.next()
 
             seq_i1, seq_i2_plus_umi = seq_i1.rstrip(), seq_i2_plus_umi.rstrip()
 
@@ -462,15 +458,15 @@ def demultiplex(dir_sample):
                 print("\n".join([header_i2.rstrip(), seq_i2_plus_umi.rstrip(), "+",
                                  qual_i2_plus_umi.rstrip()]), file=ref_file_out_mismatched_adapters_i2)
 
-                if seq_i2 not in list(i2_dict.keys()):
-                    if seq_i2 in list(mismatch_dict_i2.keys()):
+                if seq_i2 not in i2_dict.keys():
+                    if seq_i2 in mismatch_dict_i2.keys():
                         mismatch_dict_i2[seq_i2] += 1
                     else:
                         mismatch_dict_i2[seq_i2] = 1
                     mismatch_count_i2 += 1
 
-                if seq_i1 not in list(i1_dict.keys()):
-                    if seq_i1 in list(mismatch_dict_i1.keys()):
+                if seq_i1 not in i1_dict.keys():
+                    if seq_i1 in mismatch_dict_i1.keys():
                         mismatch_dict_i1[seq_i1] += 1
                     else:
                         mismatch_dict_i1[seq_i1] = 1
@@ -545,7 +541,7 @@ def demultiplex(dir_sample):
 
     # gzip fastq files
     for fo in files_out:
-        with open(fo) as f_in, gzip.open(fo + '.gz', 'wt') as f_out:
+        with open(fo) as f_in, gzip.open(fo + '.gz', 'wb') as f_out:
             f_out.writelines(f_in)
 
 
@@ -566,7 +562,7 @@ def create_plasmid_reference(dir_sample, amplicon_info):
     # If several plasmids were given, separate them using ';' in sample_info.csv. Here we remove the ';' so that
     # we just concatenate the sequences
     pl_seq = amplicon_info['plasmid_sequence'].replace(';', '')
-    seq1 = Seq(pl_seq)
+    seq1 = Seq(pl_seq, IUPAC.unambiguous_dna)
     record1 = SeqRecord(seq1, 'plasmid', description='')
     SeqIO.write(record1, file_handle, 'fasta')
 
@@ -601,7 +597,7 @@ def write_amplicon(dir_sample, amplicon_info, amplicon_list):
     file_handle = open(filename, "w")
 
     for amps in amplicon_list:
-        seq1 = Seq(amps[1])
+        seq1 = Seq(amps[1], IUPAC.unambiguous_dna)
         record1 = SeqRecord(seq1, amps[0], description='')
         SeqIO.write(record1, file_handle, 'fasta')
 
@@ -636,9 +632,9 @@ def write_amplicon(dir_sample, amplicon_info, amplicon_list):
 #
 ############################
 def get_reaction_type(amplicon_info):
-    has_guide1 = type(amplicon_info['chr_guide_1']) is str or type(amplicon_info['chr_guide_1']) is str
-    has_guide2 = type(amplicon_info['chr_guide_2']) is str or type(amplicon_info['chr_guide_2']) is str
-    has_guide3 = type(amplicon_info['chr_guide_3']) is str or type(amplicon_info['chr_guide_3']) is str
+    has_guide1 = type(amplicon_info['chr_guide_1']) is str or type(amplicon_info['chr_guide_1']) is unicode
+    has_guide2 = type(amplicon_info['chr_guide_2']) is str or type(amplicon_info['chr_guide_2']) is unicode
+    has_guide3 = type(amplicon_info['chr_guide_3']) is str or type(amplicon_info['chr_guide_3']) is unicode
 
     if not has_guide1 and not has_guide2 and not has_guide3:
         reaction_type = 'control'
@@ -1052,7 +1048,7 @@ def extract_unmapped_reads_plasmid(dir_sample, amplicon_info):
     subprocess.call(bamtofastq_command, stderr=handle_file_err)
 
     for fo in [file_R1_unmapped, file_R2_unmapped]:
-        with open(fo) as f_in, gzip.open(fo + '.gz', 'wt') as f_out:
+        with open(fo) as f_in, gzip.open(fo + '.gz', 'wb') as f_out:
             f_out.writelines(f_in)
         os.remove(fo)
 
@@ -1163,7 +1159,7 @@ def align_genome_local(dir_sample, amplicon_info, assembly, check_plasmid_insert
     N7 = amplicon_info['index_I1']
     N5 = amplicon_info['index_I2']
 
-    has_plasmid = type(amplicon_info['plasmid_sequence']) is str or type(amplicon_info['plasmid_sequence']) is str
+    has_plasmid = type(amplicon_info['plasmid_sequence']) is str or type(amplicon_info['plasmid_sequence']) is unicode
 
     if check_plasmid_insertions == 1 and has_plasmid:
         file_R1 = create_filename(dir_sample, N7, N5, 'unmapped_plasmid_R1fastqgz')
@@ -1236,7 +1232,7 @@ def align_amplicon(dir_sample, amplicon_info, check_plasmid_insertions, ncpu=4):
     N7 = amplicon_info['index_I1']
     N5 = amplicon_info['index_I2']
 
-    has_plasmid = type(amplicon_info['plasmid_sequence']) is str or type(amplicon_info['plasmid_sequence']) is str
+    has_plasmid = type(amplicon_info['plasmid_sequence']) is str or type(amplicon_info['plasmid_sequence']) is unicode
 
     if check_plasmid_insertions == 1 and has_plasmid:
         file_R1 = create_filename(dir_sample, N7, N5, 'unmapped_plasmid_R1fastqgz')
@@ -1307,12 +1303,12 @@ def create_barcode_dict(filename):
 
     barcode_dict = dict()
 
-    barcode_reads = zip(barcode_file)
+    barcode_reads = itertools.izip(barcode_file)
 
     for header_barcode in barcode_reads:
-        seq_barcode = next(barcode_reads)
-        next(barcode_reads)
-        qual_barcode = next(barcode_reads)
+        seq_barcode = barcode_reads.next()
+        barcode_reads.next()
+        qual_barcode = barcode_reads.next()
         barcode_dict[header_barcode[0].split()[0][1:]] = [seq_barcode[0].rstrip(), qual_barcode[0].rstrip()]
 
     return barcode_dict
@@ -1356,8 +1352,8 @@ def parse_indels(aligned_read):
 # Function to get the number of intersecting bases between two intervals
 ################################################################################
 def get_intersection(region1_begin, region1_end, region2_begin, region2_end):
-    list1 = list(range(int(region1_begin) + 1, int(region1_end) + 1))
-    list2 = list(range(int(region2_begin) + 1, int(region2_end) + 1))
+    list1 = range(int(region1_begin) + 1, int(region1_end) + 1)
+    list2 = range(int(region2_begin) + 1, int(region2_end) + 1)
     return len(set(list1).intersection(list2))
 
 
@@ -1641,7 +1637,7 @@ def analyze_alignments(dir_sample, amplicon_info, window_size, amplicon_window_a
     results_df = pd.DataFrame(index=[0])
 
     # We get the reference amplicon list
-    with open(filename_amplicons_fa, "r") as handle:
+    with open(filename_amplicons_fa, "rU") as handle:
         records = list(SeqIO.parse(handle, "fasta"))
 
     for record in records:
@@ -1769,7 +1765,7 @@ def extract_unmapped_reads_amplicons(dir_sample, amplicon_info):
     subprocess.call(bamtofastq_command, stderr=handle_unmapped_report)
 
     for fo in [file_R1_unmapped, file_R2_unmapped]:
-        with open(fo) as f_in, gzip.open(fo + '.gz', 'wt') as f_out:
+        with open(fo) as f_in, gzip.open(fo + '.gz', 'wb') as f_out:
             f_out.writelines(f_in)
         os.remove(fo)
 
@@ -1939,21 +1935,21 @@ def samtools_count_primary_mapped(bam_file):
 ################################################################################
 def summarize_results(results):
 
-    total_reads_list = [k for k in list(results.keys()) if str(k).endswith('_total_reads')]
-    total_reads_collapsed_list = [k for k in list(results.keys()) if str(k).endswith('_total_reads_collapsed')]
+    total_reads_list = [k for k in results.keys() if str(k).endswith('_total_reads')]
+    total_reads_collapsed_list = [k for k in results.keys() if str(k).endswith('_total_reads_collapsed')]
 
     results['total_aligned_junctions'] = results[total_reads_list].sum(axis=1)
 
     for k in total_reads_list:
         # We add np.finfo(float).eps to prevent dividing by 0
-        results[k + '_percent'] = old_div(100 * results[k], (results['total_aligned_junctions'] +
-                                                      np.finfo(float).eps))
+        results[k + '_percent'] = 100 * results[k] / (results['total_aligned_junctions'] +
+                                                      np.finfo(float).eps)
 
     results['total_aligned_junctions_collapsed'] = results[total_reads_collapsed_list].sum(axis=1)
 
     for k in total_reads_collapsed_list:
-        results[k + '_percent'] = old_div(100 * results[k], (results['total_aligned_junctions_collapsed'] +
-                                                      np.finfo(float).eps))
+        results[k + '_percent'] = 100 * results[k] / (results['total_aligned_junctions_collapsed'] +
+                                                      np.finfo(float).eps)
 
     return results
 
@@ -1963,7 +1959,7 @@ def summarize_results(results):
 #######################################################################################
 def melt_results(results_summary_with_experiments):
 
-    melt_list = [k for k in list(results_summary_with_experiments.keys()) if
+    melt_list = [k for k in results_summary_with_experiments.keys() if
                  str(k).endswith('_total_reads_collapsed_percent')]
 
     frozen_list = list(results_summary_with_experiments)
@@ -1988,11 +1984,11 @@ def summarize_results_genome(read_count, all_results_genome_global_df, results_s
     df['total_reads_aligned'] = (df['total_reads_genome'] + df['total_aligned_amplicon_reads'] +
                                  df['total_reads_plasmid_only'])
 
-    df['percent_reads_aligned'] = old_div(100 * df['total_reads_aligned'], df['read_count'])
+    df['percent_reads_aligned'] = 100 * df['total_reads_aligned'] / df['read_count']
 
-    df['percent_reads_aligned_plasmid'] = old_div(100 * df['total_reads_plasmid_only'], df['total_reads_aligned'])
-    df['percent_reads_aligned_amplicon'] = old_div(100 * df['total_aligned_amplicon_reads'], df['total_reads_aligned'])
-    df['percent_reads_mispriming'] = old_div(100 * df['total_reads_genome'], df['total_reads_aligned'])
+    df['percent_reads_aligned_plasmid'] = 100 * df['total_reads_plasmid_only'] / df['total_reads_aligned']
+    df['percent_reads_aligned_amplicon'] = 100 * df['total_aligned_amplicon_reads'] / df['total_reads_aligned']
+    df['percent_reads_mispriming'] = 100 * df['total_reads_genome'] / df['total_reads_aligned']
 
     results_out = df[['read_count', 'total_reads_aligned', 'percent_reads_aligned',
                       'total_reads_plasmid_only',
@@ -2064,18 +2060,18 @@ def get_summary_all_alignments(dir_sample, amplicon_info, read_count, result_pla
     summary_all_alignments = pd.concat([read_count, result_plasmid_df,
                result_reads_in_all_amplicons_df, results_genome_global_df], axis=1)
 
-    total_reads_list = [k for k in list(summary_all_alignments.keys()) if str(k).endswith('_total_reads')]
+    total_reads_list = [k for k in summary_all_alignments.keys() if str(k).endswith('_total_reads')]
 
     summary_all_alignments['total_aligned'] = summary_all_alignments[total_reads_list].sum(axis=1)
 
-    total_reads_collapsed_list = [k for k in list(summary_all_alignments.keys()) if str(k).endswith('_total_reads_collapsed')]
+    total_reads_collapsed_list = [k for k in summary_all_alignments.keys() if str(k).endswith('_total_reads_collapsed')]
 
     summary_all_alignments['total_aligned_collapsed'] = summary_all_alignments[total_reads_collapsed_list].sum(axis=1)
 
-    summary_all_alignments['percent_aligned'] = 100 * (old_div(summary_all_alignments['total_aligned'],
-                                                       summary_all_alignments['read_count']))
-    summary_all_alignments['percent_aligned_all_amplicons'] = 100 * (old_div(summary_all_alignments['all_amplicons_total_reads'],
-                                                        summary_all_alignments['total_aligned']))
+    summary_all_alignments['percent_aligned'] = 100 * (summary_all_alignments['total_aligned'] /
+                                                       summary_all_alignments['read_count'])
+    summary_all_alignments['percent_aligned_all_amplicons'] = 100 * (summary_all_alignments['all_amplicons_total_reads'] /
+                                                        summary_all_alignments['total_aligned'])
     summary_all_alignments.to_excel(summary_all_alignments_file, index=False)
 
     return summary_all_alignments
@@ -2086,7 +2082,7 @@ def get_summary_all_alignments(dir_sample, amplicon_info, read_count, result_pla
 #######################################################################################
 def melt_big_results(big_results):
 
-    melt_list1 = [k for k in list(big_results.keys()) if
+    melt_list1 = [k for k in big_results.keys() if
                  str(k).endswith('_total_reads_collapsed_percent')]
 
     melt_list2 = ['percent_aligned', 'percent_aligned_all_amplicons']
@@ -2128,7 +2124,7 @@ def summarize_big_results(big_results_in):
                  '2b_1b_cut1_total_reads_collapsed', '2b_2b_cut1_total_reads_collapsed']
 
     for c in cols_list:
-        if c not in list(results.keys()):
+        if c not in results.keys():
             results[c] = np.nan
 
     results['AAV/Plasmid Integrations reads_collapsed'] = results['target_plus_plasmid_total_reads_collapsed']
@@ -2172,55 +2168,55 @@ def summarize_big_results(big_results_in):
 
     # We use eps to prevent errors when dividing by zero. It can happen for samples with zero reads
     eps = np.finfo(float).eps
-    results['AAV/Plasmid Integrations'] = (old_div(100*results['AAV/Plasmid Integrations reads_collapsed'],
-                                         (results['total_aligned_junctions_collapsed'] + eps)))
+    results['AAV/Plasmid Integrations'] = (100*results['AAV/Plasmid Integrations reads_collapsed']/
+                                         (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['WT'] = (old_div(100 * results['WT reads_collapsed'], (results['total_aligned_junctions_collapsed'] + eps)))
+    results['WT'] = (100 * results['WT reads_collapsed'] / (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['Small Indels'] = (old_div(100 * results['Small Indels reads_collapsed'],
-                               (results['total_aligned_junctions_collapsed'] + eps)))
+    results['Small Indels'] = (100 * results['Small Indels reads_collapsed'] /
+                               (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['Large Deletion'] = (old_div(100 * results['Large Deletion reads_collapsed'],
-                                 (results['total_aligned_junctions_collapsed'] + eps)))
+    results['Large Deletion'] = (100 * results['Large Deletion reads_collapsed'] /
+                                 (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['Inversion'] = (old_div(100 * results['Inversion reads_collapsed'],
-                            (results['total_aligned_junctions_collapsed'])) + eps)
+    results['Inversion'] = (100 * results['Inversion reads_collapsed'] /
+                            (results['total_aligned_junctions_collapsed']) + eps)
 
-    results['WT 1a_1b'] = (old_div(100 * results['WT 1a_1b reads_collapsed'],
-                           (results['total_aligned_junctions_collapsed'] + eps)))
+    results['WT 1a_1b'] = (100 * results['WT 1a_1b reads_collapsed'] /
+                           (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['1a_1b indels'] = (old_div(100 * results['1a_1b indels reads_collapsed'],
-                               (results['total_aligned_junctions_collapsed'] + eps)))
+    results['1a_1b indels'] = (100 * results['1a_1b indels reads_collapsed'] /
+                               (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['WT 2a_2b'] = (old_div(100 * results['WT 2a_2b reads_collapsed'],
-                           (results['total_aligned_junctions_collapsed'] + eps)))
+    results['WT 2a_2b'] = (100 * results['WT 2a_2b reads_collapsed'] /
+                           (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['2a_2b indels'] = (old_div(100 * results['2a_2b indels reads_collapsed'],
-                               (results['total_aligned_junctions_collapsed'] + eps)))
+    results['2a_2b indels'] = (100 * results['2a_2b indels reads_collapsed'] /
+                               (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['1a_1a'] = (old_div(100 * results['1a_1a_cut1_total_reads_collapsed'],
-                        (results['total_aligned_junctions_collapsed'] + eps)))
+    results['1a_1a'] = (100 * results['1a_1a_cut1_total_reads_collapsed'] /
+                        (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['1b_1b'] = (old_div(100 * results['1b_1b_cut1_total_reads_collapsed'],
-                        (results['total_aligned_junctions_collapsed'] + eps)))
+    results['1b_1b'] = (100 * results['1b_1b_cut1_total_reads_collapsed'] /
+                        (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['2b_2b'] = (old_div(100 * results['2b_2b_cut1_total_reads_collapsed'],
-                        (results['total_aligned_junctions_collapsed'] + eps)))
+    results['2b_2b'] = (100 * results['2b_2b_cut1_total_reads_collapsed'] /
+                        (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['1a_2a'] = (old_div(100 * results['1a_2a_cut1_total_reads_collapsed'],
-                        (results['total_aligned_junctions_collapsed'] + eps)))
+    results['1a_2a'] = (100 * results['1a_2a_cut1_total_reads_collapsed'] /
+                        (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['1a_2b'] = (old_div(100 * results['1a_2b_cut1_total_reads_collapsed'],
-                        (results['total_aligned_junctions_collapsed'] + eps)))
+    results['1a_2b'] = (100 * results['1a_2b_cut1_total_reads_collapsed'] /
+                        (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['2a_1b'] = (old_div(100 * results['2a_1b_cut1_total_reads_collapsed'],
-                        (results['total_aligned_junctions_collapsed'] + eps)))
+    results['2a_1b'] = (100 * results['2a_1b_cut1_total_reads_collapsed'] /
+                        (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['2a_2a'] = (old_div(100 * results['2a_2a_cut1_total_reads_collapsed'],
-                        (results['total_aligned_junctions_collapsed'] + eps)))
+    results['2a_2a'] = (100 * results['2a_2a_cut1_total_reads_collapsed'] /
+                        (results['total_aligned_junctions_collapsed'] + eps))
 
-    results['2b_1b'] = (old_div(100 * results['2b_1b_cut1_total_reads_collapsed'],
-                        (results['total_aligned_junctions_collapsed'] + eps)))
+    results['2b_1b'] = (100 * results['2b_1b_cut1_total_reads_collapsed'] /
+                        (results['total_aligned_junctions_collapsed'] + eps))
 
     results['total_aligned_amplicons'] = results['all_amplicons_total_reads']
     results['total_aligned_amplicons_collapsed'] = results['all_amplicons_total_reads_collapsed']

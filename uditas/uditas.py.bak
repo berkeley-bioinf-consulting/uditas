@@ -5,19 +5,17 @@
 
 # imports here
 from __future__ import print_function
-from __future__ import absolute_import
 
-import future
 import pandas as pd
 
-from . import uditas_helpers
+import uditas_helpers
 
 import argparse
 
 import os
 
 
-from ._version import __version__
+from _version import __version__
 
 # Metadata
 __author__ = "Eugenio Marco"
@@ -108,7 +106,7 @@ def main():
             uditas_helpers.trim_fastq(dir_sample, amplicon_info, process_AMP_seq_run)
         # We check that we have plasmid_sequence
         has_plasmid = (type(amplicon_info['plasmid_sequence']) is str or
-                       type(amplicon_info['plasmid_sequence']) is str)
+                       type(amplicon_info['plasmid_sequence']) is unicode)
         do_plasmid = check_plasmid_insertions == 1 and has_plasmid
         # Align to plasmid if necessary
         if (do_plasmid and not skip_plasmid_alignment):
@@ -156,7 +154,7 @@ def main():
         # the genomic background is different (genomic_background). This is used if the field genomic_background is
         # present in sample_info.csv
         has_genomic_background = (type(amplicon_info['genomic_background']) is str or
-                                  type(amplicon_info['genomic_background']) is str)
+                                  type(amplicon_info['genomic_background']) is unicode)
 
         if has_genomic_background:
             genomic_background = amplicon_info['genomic_background']
