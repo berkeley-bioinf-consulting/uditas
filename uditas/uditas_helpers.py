@@ -39,6 +39,8 @@ import operator
 
 import subprocess
 
+import logging
+
 import twobitreader
 
 from Bio import SeqIO
@@ -55,6 +57,9 @@ import pysam
 __author__ = "Eugenio Marco"
 __credits__ = ["David Kelly"]
 __status__ = "Development"
+
+
+logger = logging.getLogger(__name__)
 
 
 class Error(Exception):
@@ -1093,6 +1098,9 @@ def analyze_alignments_plasmid(dir_sample, amplicon_info, min_MAPQ, file_genome_
         elif amplicon_info['strand'] == '-':
             seq_after_uditas_primer = reverse_complement(genome[amplicon_info['chr']][(amplicon_info['start'] -
                                                                                        length_to_test):amplicon_info['start']])
+        
+        logger.debug(f'plasmid matching sequence: {seq_after_uditas_primer}')
+
         n_max_mismatches = 2  # We allow this number of mismatches between the read and the sequence after the primer
 
         names_list_plasmid_genome = []

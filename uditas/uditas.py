@@ -89,7 +89,8 @@ def main():
 
     sample_info_filename = os.path.join(dir_sample, 'sample_info.csv')
 
-    experiments = pd.read_csv(sample_info_filename)
+    experiments = pd.read_csv(sample_info_filename, dtype={'chr':str, 'chr_guide_1': str, 'chr_guide_2': str, 'chr_guide_3': str})
+
     read_count = pd.DataFrame()
     # Make list of samples to process
     processing_all_amplicons = (process_amplicon == 'all')

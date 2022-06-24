@@ -11,6 +11,8 @@ COPY ./uditas_env_step2.yml .
 
 RUN conda install -n uditas_env -c anaconda -c conda-forge -c bioconda --file uditas_env_step2.yml
 
+RUN apt-get update && apt-get install -y vim
+
 SHELL ["conda", "run", "-n", "uditas_env", "/bin/bash", "-c"]
 
 COPY . .
