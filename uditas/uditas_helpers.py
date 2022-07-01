@@ -907,7 +907,7 @@ def create_amplicon(dir_sample, amplicon_info, file_genome_2bit, amplicon_window
 #        process_AMP_seq_run, set to 1 to trim in read2 the same adapter as in GUIDE-Seq
 #
 # ##########################
-def trim_fastq(dir_sample, amplicon_info, process_AMP_seq_run):
+def trim_fastq(dir_sample, amplicon_info, process_AMP_seq_run, ncpu):
 
     # UDiTaS adapters
     Nv2F = 'TCGTCGGCAGCGTCAGATGTGTATAAGAGACAG'
@@ -939,6 +939,7 @@ def trim_fastq(dir_sample, amplicon_info, process_AMP_seq_run):
                         '-a', reverse_complement(SBS12),
                         '-A', reverse_complement(i2_adapter),
                         '-o', file_cutadapt_R1, '-p', file_cutadapt_R2,
+                        '-j', str(ncpu),
                         file_R1, file_R2]
 
     handle_cutadapt_report = open(file_cutadapt_report, 'wb')

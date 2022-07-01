@@ -106,7 +106,7 @@ def main():
         assembly = amplicon_info['genome']
         file_genome_2bit = os.path.join(folder_genome_2bit, assembly + '.2bit')
         if skip_trimming == 0:
-            uditas_helpers.trim_fastq(dir_sample, amplicon_info, process_AMP_seq_run)
+            uditas_helpers.trim_fastq(dir_sample, amplicon_info, process_AMP_seq_run, ncpu)
         # We check that we have plasmid_sequence
         has_plasmid = (type(amplicon_info['plasmid_sequence']) is str or
                        type(amplicon_info['plasmid_sequence']) is str)
