@@ -134,3 +134,5 @@ If the input data is already demultiplexed and missing UMIs, there is a utilty s
 `python /inst/uditas_utils.py preprocess /path/to/input/fastq /path/to/uditas/output`
 
 The sample_info.csv file must be present in the output directory. The script looks for sample fastq files by concatenating the `Sample` column in the sample_info file with `_R[12]_001.fastq.gz`. It will then create the directory structure and copy fq files from the input directory to the output. It will also create umi files with a unique umi per read pair.
+
+The resulting data can be processed by using the `-skip_demultiplexing 1` option.
