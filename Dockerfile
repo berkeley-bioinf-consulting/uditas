@@ -2,7 +2,6 @@ FROM continuumio/miniconda3
 
 WORKDIR /inst
 
-# RUN git clone --depth=1 https://github.com/editasmedicine/uditas 
 COPY ./uditas_env_step1.yml .
 
 RUN conda env create -f uditas_env_step1.yml
@@ -19,4 +18,18 @@ COPY . .
 
 RUN python setup.py install
 
-CMD ["conda", "run", "-n", "uditas_env", "/bin/bash"]
+SHELL ["/bin/bash","-c"]
+
+ENV NB_USER uditas
+
+ENV NB_UID 1000
+
+RUN useradd -m -s /bin/bash -N -u $NB_UID $NB_USER
+
+WORKDIR /home/${NB_USER}
+
+USER $NB_USER
+
+RUN conda init
+
+RUN echo 'conda activate uditas_env' >> ~/.bashrc

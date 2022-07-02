@@ -1,8 +1,10 @@
-UDiTaS v1.0
-===========
+UDiTaS v1.1 Generation Bio
+==========================
 
 Overview
 --------
+
+This repo is an updated version of the editasmedicine/uditas repo. It had been updated to work with python 3.9+ and docker. 
 
 UDiTaS(TM) stands for UniDirectional Targeted Sequencing, a novel sequencing method useful for measuring small indels as well as
 structural rearrangements, like translocations, in a single reaction.
@@ -13,29 +15,27 @@ See details of the method in Giannoukos et al. BMC Genomics (2018) 19:212, https
 Systems Requirements
 --------------------
 
-UDiTaS has been tested in python 2.7.13 and requires the python packages and tools listed in the file uditas_env.yml
+UDiTaS has been tested in python 3.9 and requires the python packages and tools listed in the files uditas_env_step1.yml and uditas_env_step2.yml. These are separated because of the challenges conda has with resolving installation requirements for environments with a large number of packages. 
 
-The code requires setting up two environmental variables
+Build the docker image with
 
-`BOWTIE2_INDEXES` contains the location of the bowtie2 index files, typically hg38.1.bt2, hg38.2.bt2, etc.
+`docker build -t uditas .`
 
-`GENOMES_2BIT` contains the location of the 2bit files for the genomes used in the analysis, eg hg38.2bit
+This builds the image and tags it as `uditas:latest`. The code requires env vars, `BOWTIE2_INDEXES` and `GENOMES_2BIT`, that contain the location of genome indexes and 2bit files, as well as mounted access points for those files, and the input data. Assuming the indexes and 2bit files are in the same directory, these can be specified in the `docker run` call as follows
 
-To test the code create a virtual python environment with
+`docker run --rm -it -v /path/to/data:/data -v /path/to/genome/indexes:/genome -e BOWTIE2_INDEXES=/genome -e GENOMES_2BIT=/genome uditas:latest "/bin/bash"`
 
-`conda env create -f uditas_env.yml`
+The conda environment should be activated automatically, but if not activate the conda environment with
 
-then activate using
+`conda activate uditas_env`
 
-`source activate uditas_env`
+Copy the code and data to an accessible directory and test the installation with
 
-To install uditas as an executable run
-
-`python setup.py install`
-
-To test the installation run
-
+`cp -r /inst .`
+`cd inst`
 `pytest`
+
+(You must have hg38 files present in the directories specified in the env vars above for this to work)
 
 This will process the test data in
 
@@ -125,3 +125,12 @@ optional arguments:
                         Set to 1 to process an AMP-seq run using GUIDE-seq
                         adapters (default: 0)
 ```
+
+Preprocessing
+-------------
+
+If the input data is already demultiplexed and missing UMIs, there is a utilty script that will preprocess the data so that it can be run by `uditas`.
+
+`python /inst/uditas_utils.py preprocess /path/to/input/fastq /path/to/uditas/output`
+
+The sample_info.csv file must be present in the output directory. The script looks for sample fastq files by concatenating the `Sample` column in the sample_info file with `_R[12]_001.fastq.gz`. It will then create the directory structure and copy fq files from the input directory to the output. It will also create umi files with a unique umi per read pair.
