@@ -131,8 +131,12 @@ Preprocessing
 
 If the input data is already demultiplexed and missing UMIs, there is a utilty script that will preprocess the data so that it can be run by `uditas`.
 
-`python /inst/uditas_utils.py preprocess /path/to/input/fastq /path/to/uditas/output`
+`python /inst/uditas_utils.py preprocess sample_info.csv /path/to/input/fastq /path/to/uditas/output`
 
 The sample_info.csv file must be present in the output directory. The script looks for sample fastq files by concatenating the `Sample` column in the sample_info file with `_R[12]_001.fastq.gz`. It will then create the directory structure and copy fq files from the input directory to the output. It will also create umi files with a unique umi per read pair.
 
-The resulting data can be processed by using the `-skip_demultiplexing 1` option.
+The resulting data can be processed by using the `-skip_demultiplexing 1` option. 
+
+If the files are already trimmed, an optional `--make-cutadapt` argument to the preprocessing script will copy them to the cut adapt directory that UDiTaS expects. Use the `-skip_trimming 1` option in this case.
+
+

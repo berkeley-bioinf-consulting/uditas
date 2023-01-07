@@ -280,13 +280,20 @@ def create_filename(dir_sample, N7, N5, filetype):
         return os.path.join(main_folder, 'results', N7 + '_' + N5 + '_read_counts.xlsx')
 
 
+dna_tr = str.maketrans('ACGTNacgtn', 'TGCANtgcan')
+
+
+def rc(seq):
+    return seq.translate(dna_tr)[::-1]
+
+
 ############################
 #
 # Demultiplexer
 # Input: folder to demultiplex, with Undetermined fastq files and sample info in sample_info.csv
 #
 # ##########################
-def demultiplex(dir_sample):
+def demultiplex(dir_sample, rc_index=0, max_barcode_mismatches=2, umi_file_name=""):
 
     # Read indices
     sample_info_filename = os.path.join(dir_sample, 'sample_info.csv')
@@ -297,6 +304,9 @@ def demultiplex(dir_sample):
     r2_fastq = os.path.join(dir_sample, 'Undetermined_S0_L001_R2_001.fastq.gz')
     i1_fastq = os.path.join(dir_sample, 'Undetermined_S0_L001_I1_001.fastq.gz')
     i2_fastq = os.path.join(dir_sample, 'Undetermined_S0_L001_I2_001.fastq.gz')
+
+    if umi_file_name:
+        umi_fastq = os.path.join(dir_sample, umi_file_name)
 
     index_i1_list = list(experiments['index_I1'])
     barcode_i1_list = list(experiments['barcode_I1'])
@@ -369,6 +379,9 @@ def demultiplex(dir_sample):
 
     # We open r1,r2,i1,i2 files and distribute reads
     with open_fastq_or_gz(r1_fastq) as r1_file, open_fastq_or_gz(r2_fastq) as r2_file, open_fastq_or_gz(i1_fastq) as i1_file, open_fastq_or_gz(i2_fastq) as i2_file:
+        if umi_file_name:
+            umi_file = open_fastq_or_gz(umi_fastq)
+
         # Add counters for all reads
 
         reads_in_experiment_list_count = 0
@@ -396,6 +409,19 @@ def demultiplex(dir_sample):
 
             qual_i1, qual_i2_plus_umi = qual_i1.rstrip(), qual_i2_plus_umi.rstrip()
 
+            if umi_file_name:
+                header_umi = next(umi_file)
+                seq_umi = next(umi_file)
+                next(umi_file)
+                qual_umi = next(umi_file)
+
+                seq_i2_plus_umi += seq_umi.strip()
+                qual_i2_plus_umi += qual_umi.strip()
+
+            if rc_index:
+                seq_i1 = rc(seq_i1)
+                qual_i1 = qual_i1[::-1]
+
             #       We mask with N any bases with scores below or equal to , (11, default in mask)
             seq_i1 = mask(seq_i1, qual_i1)
 
@@ -411,10 +437,10 @@ def demultiplex(dir_sample):
             if (seq_i1 in barcode_i1_list) and (seq_i2 in barcode_i2_list):
                 # perfect match case
                 is_good_index = 1
-            else:
+            elif max_barcode_mismatches > 0:
                 # We look for barcodes with up to two mismatches, default in select_barcode
-                seq_i1_match = select_barcode(seq_i1, barcode_i1_list)
-                seq_i2_match = select_barcode(seq_i2, barcode_i2_list)
+                seq_i1_match = select_barcode(seq_i1, barcode_i1_list, max_barcode_mismatches)
+                seq_i2_match = select_barcode(seq_i2, barcode_i2_list, max_barcode_mismatches)
                 if len(seq_i2_match) > 0 and len(seq_i1_match) > 0:
                     # match after selecting adapter with up to 2 mismatches (default in select_barcode)
                     is_good_index = 1

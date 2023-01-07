@@ -32,6 +32,8 @@ def main():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("dir_sample", help='Directory with the sample to be processed')
+    parser.add_argument("-umi_file", help='Name of file containing separte UMIs', default='')
+    parser.add_argument("-rc_index", help='Use the RC of index 1 (i7)', default=0)
     parser.add_argument("-folder_genome_2bit", help=('Folder containing the 2bit file(s) with the ' +
                                                     'reference genome being used'),
                         default=os.environ.get('GENOMES_2BIT', os.path.join('/', 'reference', 'genomes_2bit')))
@@ -53,6 +55,7 @@ def main():
                         help=('Skip plasmid alignment? Note, just alignment. ' +
                               'Counts still evaluated. Options: 0, 1 (skip)'),
                         default=0)
+    parser.add_argument("-max_barcode_mismatches", help='Allowed number of mismatches in indexes', default=2)
     parser.add_argument("-ncpu", help='Number of CPUs to use', default=4)
     parser.add_argument("-window_size", help='Window size around cut sites used to grab UDiTaS reads', default=15)
     parser.add_argument("-default_amplicon_window_around_cut",
@@ -65,6 +68,8 @@ def main():
     args = parser.parse_args()
 
     dir_sample = os.path.abspath(os.path.join(os.getcwd(), args.dir_sample))
+    umi_file = args.umi_file
+    rc_index = int(args.rc_index)
     folder_genome_2bit = args.folder_genome_2bit
     skip_demultiplexing = int(args.skip_demultiplexing)
     skip_trimming = int(args.skip_trimming)
@@ -74,6 +79,7 @@ def main():
     skip_amplicon_global_alignment = int(args.skip_amplicon_global_alignment)
     check_plasmid_insertions = int(args.check_plasmid_insertions)
     skip_plasmid_alignment = int(args.skip_plasmid_alignment)
+    max_barcode_mismatches = int(args.max_barcode_mismatches)
     ncpu = int(args.ncpu)
     window_size = int(args.window_size)
     default_amplicon_window_around_cut = int(args.default_amplicon_window_around_cut)
@@ -85,7 +91,7 @@ def main():
 
     # Call to demultiplexing step
     if skip_demultiplexing == 0:
-        uditas_helpers.demultiplex(dir_sample)
+        uditas_helpers.demultiplex(dir_sample, rc_index, max_barcode_mismatches, umi_file)
 
     sample_info_filename = os.path.join(dir_sample, 'sample_info.csv')
 
