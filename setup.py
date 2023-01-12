@@ -19,7 +19,12 @@ setup(
     name = "uditas",
     packages = ["uditas"],
     entry_points = {
-        "console_scripts": ['uditas = uditas.uditas:main']
+        "console_scripts": [
+            'uditas = uditas.uditas:main',
+            'edit_structures = uditas.edit_structures:structures',
+            'umi_locations = uditas.umi_locations:locations',
+            'uditas_utils = uditas.uditas_utils:cli'
+            ]
         },
     version = version,
     description = "UDiTaS analysis software.",
